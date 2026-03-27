@@ -40,7 +40,7 @@ def draw_graph(path=None, packet_positions=None):
     nx.draw(G, pos,
             with_labels=True,
             node_color='skyblue',
-            node_size=900,
+            node_size=200,
             ax=ax)
 
     nx.draw_networkx_edge_labels(
