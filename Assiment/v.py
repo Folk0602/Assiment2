@@ -35,53 +35,57 @@ G = st.session_state.G
 pos = st.session_state.pos
 
 # =====================
-# UPDATE LAYOUT (ไม่ให้ node เก่าขยับ)
+# UPDATE LAYOUT (ไม่ขยับ)
 # =====================
 def update_layout(new_node=None):
     global pos
 
     if new_node:
-        # วาง node ใหม่แบบสุ่มใกล้กราฟ
         pos[new_node] = (
             random.uniform(-1, 1),
             random.uniform(-1, 1)
         )
 
-    # 🔥 ล็อคตำแหน่ง node เก่า
     pos = nx.spring_layout(G, pos=pos, fixed=pos.keys())
-
     st.session_state.pos = pos
 
 # =====================
-# DRAW
+# DRAW (บ้าน + รถ)
 # =====================
 def draw_graph(path=None, packet_positions=None):
     fig, ax = plt.subplots()
 
-    nx.draw(G, pos,
-            with_labels=True,
-            node_color='skyblue',
-            node_size=200,
-            font_size=5,
-            ax=ax)
-
+    # edge
+    nx.draw_networkx_edges(G, pos, ax=ax)
     nx.draw_networkx_edge_labels(
         G, pos,
         edge_labels=nx.get_edge_attributes(G, 'weight'),
-        font_size=7,
+        font_size=5,
         ax=ax
     )
 
+    # 🏠 node
+    for node, (x, y) in pos.items():
+        ax.text(x, y, "🏠", fontsize=18, ha='center', va='center')
+        ax.text(x, y - 0.08, node, fontsize=7, ha='center')
+
+    # 🔴 path
     if path:
         edges = list(zip(path, path[1:]))
-        nx.draw_networkx_edges(G, pos, edgelist=edges, edge_color='red', width=2, ax=ax)
+        nx.draw_networkx_edges(G, pos,
+                               edgelist=edges,
+                               edge_color='red',
+                               width=2,
+                               ax=ax)
 
+    # 🚗 packet
     if packet_positions:
         for i, (x, y) in enumerate(packet_positions):
-            ax.scatter(x, y, s=120, color='yellow', edgecolors='black')
-            ax.text(x, y, str(i), fontsize=6)
+            ax.text(x, y, "🚗", fontsize=14, ha='center', va='center')
+            ax.text(x, y - 0.08, str(i), fontsize=6, ha='center')
 
-    ax.set_title("Traffic Simulation", fontsize=10)
+    ax.set_title("Smart Traffic Simulation", fontsize=10)
+    ax.axis('off')
 
     return fig
 
@@ -157,13 +161,11 @@ def animate(path, num_packets):
 # =====================
 # UI
 # =====================
-st.title("🚦 Graph Traffic Simulation (Stable Layout)")
+st.title("🚦 Smart Traffic Simulation")
 
 col1, col2 = st.columns(2)
 
-# ---------------------
 # CRUD
-# ---------------------
 with col1:
     st.subheader("Manage Graph")
 
@@ -171,7 +173,7 @@ with col1:
     if st.button("Add Node"):
         if node:
             G.add_node(node)
-            update_layout(node)  # 🔥 ไม่ให้ graph เดิมขยับ
+            update_layout(node)
             st.success("Node added")
 
     del_node = st.text_input("Delete Node")
@@ -194,9 +196,7 @@ with col1:
             update_layout()
             st.success("Edge added")
 
-# ---------------------
-# SIMULATION
-# ---------------------
+# Simulation
 with col2:
     st.subheader("Simulation")
 
@@ -212,8 +212,6 @@ with col2:
         except:
             st.error("Path not found")
 
-# ---------------------
-# SHOW GRAPH
-# ---------------------
+# Graph view
 st.subheader("Graph View")
 st.pyplot(draw_graph())
