@@ -32,7 +32,7 @@ G = st.session_state.G
 pos = st.session_state.pos
 
 # =====================
-# DRAW GRAPH
+# DRAW
 # =====================
 def draw_graph(path=None, packet_positions=None):
     fig, ax = plt.subplots()
@@ -49,20 +49,21 @@ def draw_graph(path=None, packet_positions=None):
         ax=ax
     )
 
+    # highlight path
     if path:
         edges = list(zip(path, path[1:]))
         nx.draw_networkx_edges(G, pos, edgelist=edges, edge_color='red', width=3, ax=ax)
 
-    # 🔥 วาด packet
+    # draw packets
     if packet_positions:
         for i, (x, y) in enumerate(packet_positions):
-            ax.scatter(x, y, s=300, color='yellow', edgecolors='black')
+            ax.scatter(x, y, s=250, color='yellow', edgecolors='black')
             ax.text(x, y, str(i), fontsize=8)
 
     return fig
 
 # =====================
-# ANIMATION (Packet Tracer Style)
+# ANIMATION (SMOOTH)
 # =====================
 def animate(path, num_packets):
     placeholder = st.empty()
@@ -75,14 +76,14 @@ def animate(path, num_packets):
         original_weights[(u, v)] = G[u][v]['weight']
         traffic[(u, v)] = 0
 
-    # 🔥 สร้าง packet
+    # 🔥 packet ลื่น
     packets = []
     for i in range(num_packets):
         packets.append({
             "edge_index": 0,
             "t": 0.0,
-            "speed": random.uniform(0.01, 0.03),
-            "delay": i * 5
+            "speed": random.uniform(0.005, 0.01),  # smooth
+            "delay": i * 8
         })
 
     step = 0
@@ -106,7 +107,7 @@ def animate(path, num_packets):
             u = path[p["edge_index"]]
             v = path[p["edge_index"]+1]
 
-            # เข้า edge → เพิ่ม traffic
+            # เข้า edge
             if p["t"] == 0:
                 traffic[(u, v)] += 1
                 G[u][v]['weight'] = original_weights[(u, v)] + traffic[(u, v)]
@@ -114,7 +115,7 @@ def animate(path, num_packets):
             x1, y1 = pos[u]
             x2, y2 = pos[v]
 
-            # เคลื่อนที่
+            # 🔥 smooth movement
             p["t"] += p["speed"]
 
             x = x1 + (x2 - x1) * p["t"]
@@ -126,14 +127,14 @@ def animate(path, num_packets):
             if p["t"] >= 1:
                 traffic[(u, v)] -= 1
                 G[u][v]['weight'] = original_weights[(u, v)] + traffic[(u, v)]
-
                 p["edge_index"] += 1
                 p["t"] = 0
 
         fig = draw_graph(path, packet_positions)
         placeholder.pyplot(fig)
 
-        time.sleep(0.03)
+        # 🔥 ลื่นขึ้น
+        time.sleep(0.01)
         step += 1
 
     end_time = time.time()
@@ -142,13 +143,11 @@ def animate(path, num_packets):
 # =====================
 # UI
 # =====================
-st.title("🚦 Graph Traffic Simulation (Packet Tracer Style)")
+st.title("🚦 Graph Traffic Simulation (Smooth Version)")
 
 col1, col2 = st.columns(2)
 
-# ---------------------
-# ADD NODE / EDGE
-# ---------------------
+# CRUD
 with col1:
     st.subheader("➕ Manage Graph")
 
@@ -177,15 +176,13 @@ with col1:
             G.add_edge(u, v, weight=w)
             st.success("Edge added")
 
-# ---------------------
-# PATH + SIMULATION
-# ---------------------
+# Simulation
 with col2:
     st.subheader("🚀 Simulation")
 
     start = st.text_input("Start Node")
     end = st.text_input("End Node")
-    packets = st.number_input("Packets", min_value=1, value=3)
+    packets = st.number_input("Packets", min_value=1, value=5)
 
     if st.button("Run Simulation"):
         try:
@@ -199,8 +196,6 @@ with col2:
         except:
             st.error("Path not found")
 
-# ---------------------
-# SHOW GRAPH
-# ---------------------
+# Show graph
 st.subheader("📊 Graph View")
 st.pyplot(draw_graph())
