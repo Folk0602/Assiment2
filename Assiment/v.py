@@ -32,9 +32,9 @@ G = st.session_state.G
 pos = st.session_state.pos
 
 # =====================
-# DRAW
+# DRAW GRAPH
 # =====================
-def draw_graph(highlight_path=None, packet_positions=None):
+def draw_graph(path=None, packet_positions=None):
     fig, ax = plt.subplots()
 
     nx.draw(G, pos,
@@ -49,39 +49,40 @@ def draw_graph(highlight_path=None, packet_positions=None):
         ax=ax
     )
 
-    if highlight_path:
-        edges = list(zip(highlight_path, highlight_path[1:]))
+    if path:
+        edges = list(zip(path, path[1:]))
         nx.draw_networkx_edges(G, pos, edgelist=edges, edge_color='red', width=3, ax=ax)
 
+    # 🔥 วาด packet
     if packet_positions:
-        for p in packet_positions:
-            ax.scatter(p[0], p[1], s=200)
+        for i, (x, y) in enumerate(packet_positions):
+            ax.scatter(x, y, s=300, color='yellow', edgecolors='black')
+            ax.text(x, y, str(i), fontsize=8)
 
     return fig
 
 # =====================
-# ANIMATION
+# ANIMATION (Packet Tracer Style)
 # =====================
 def animate(path, num_packets):
     placeholder = st.empty()
 
     original_weights = {}
     traffic = {}
-    total_distance = 0
 
     for i in range(len(path)-1):
         u, v = path[i], path[i+1]
         original_weights[(u, v)] = G[u][v]['weight']
         traffic[(u, v)] = 0
-        total_distance += G[u][v]['weight']
 
+    # 🔥 สร้าง packet
     packets = []
     for i in range(num_packets):
         packets.append({
-            "index": 0,
-            "progress": 0.0,
-            "delay": i * 10,
-            "speed": random.uniform(0.5, 1.5)
+            "edge_index": 0,
+            "t": 0.0,
+            "speed": random.uniform(0.01, 0.03),
+            "delay": i * 5
         })
 
     step = 0
@@ -92,49 +93,42 @@ def animate(path, num_packets):
         running = False
         packet_positions = []
 
-        for i, p in enumerate(packets):
+        for p in packets:
 
             if step < p["delay"]:
                 continue
 
-            if p["index"] >= len(path)-1:
+            if p["edge_index"] >= len(path)-1:
                 continue
 
             running = True
 
-            u = path[p["index"]]
-            v = path[p["index"]+1]
+            u = path[p["edge_index"]]
+            v = path[p["edge_index"]+1]
 
-            # 🚫 ห้ามแซง
-            if i > 0:
-                front = packets[i-1]
-                if front["index"] == p["index"] and (front["progress"] - p["progress"] < 5):
-                    speed = 0
-                else:
-                    speed = p["speed"]
-            else:
-                speed = p["speed"]
-
-            if p["progress"] == 0:
+            # เข้า edge → เพิ่ม traffic
+            if p["t"] == 0:
                 traffic[(u, v)] += 1
                 G[u][v]['weight'] = original_weights[(u, v)] + traffic[(u, v)]
 
             x1, y1 = pos[u]
             x2, y2 = pos[v]
 
-            p["progress"] += speed
-            t = p["progress"] / 30
+            # เคลื่อนที่
+            p["t"] += p["speed"]
 
-            x = x1 + (x2 - x1) * t
-            y = y1 + (y2 - y1) * t
+            x = x1 + (x2 - x1) * p["t"]
+            y = y1 + (y2 - y1) * p["t"]
 
             packet_positions.append((x, y))
 
-            if p["progress"] >= 30:
+            # ออกจาก edge
+            if p["t"] >= 1:
                 traffic[(u, v)] -= 1
                 G[u][v]['weight'] = original_weights[(u, v)] + traffic[(u, v)]
-                p["index"] += 1
-                p["progress"] = 0
+
+                p["edge_index"] += 1
+                p["t"] = 0
 
         fig = draw_graph(path, packet_positions)
         placeholder.pyplot(fig)
@@ -143,22 +137,22 @@ def animate(path, num_packets):
         step += 1
 
     end_time = time.time()
-    return end_time - start_time, total_distance
+    return end_time - start_time
 
 # =====================
 # UI
 # =====================
-st.title("🚦 Graph Traffic Simulation (Streamlit Version)")
+st.title("🚦 Graph Traffic Simulation (Packet Tracer Style)")
 
 col1, col2 = st.columns(2)
 
 # ---------------------
-# CRUD
+# ADD NODE / EDGE
 # ---------------------
 with col1:
-    st.subheader("➕ Add Node / Edge")
+    st.subheader("➕ Manage Graph")
 
-    node = st.text_input("Node name")
+    node = st.text_input("Add Node")
     if st.button("Add Node"):
         if node:
             G.add_node(node)
@@ -184,24 +178,23 @@ with col1:
             st.success("Edge added")
 
 # ---------------------
-# PATH + ANIMATION
+# PATH + SIMULATION
 # ---------------------
 with col2:
-    st.subheader("🚀 Find Path")
+    st.subheader("🚀 Simulation")
 
     start = st.text_input("Start Node")
     end = st.text_input("End Node")
-    packets = st.number_input("Packets", min_value=1, value=1)
+    packets = st.number_input("Packets", min_value=1, value=3)
 
     if st.button("Run Simulation"):
         try:
             path = nx.shortest_path(G, start, end, weight='weight')
             st.write("Path:", " -> ".join(path))
 
-            travel_time, distance = animate(path, packets)
+            t = animate(path, packets)
 
-            st.success(f"Distance: {distance}")
-            st.success(f"Time: {travel_time:.2f} sec")
+            st.success(f"Simulation Time: {t:.2f} sec")
 
         except:
             st.error("Path not found")
