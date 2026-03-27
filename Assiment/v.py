@@ -25,8 +25,11 @@ if "G" not in st.session_state:
         ("Lop Buri", "Nakhon Nayok", 7),
         ("Lop Buri", "Chai Nat", 4)
     ])
+
     st.session_state.G = G
-    st.session_state.pos = nx.kamada_kawai_layout(G)
+
+    # 🔥 ใช้ spring_layout (ไม่ต้อง scipy)
+    st.session_state.pos = nx.spring_layout(G, seed=42)
 
 G = st.session_state.G
 pos = st.session_state.pos
@@ -153,9 +156,12 @@ with col1:
     w = st.number_input("Weight", value=1)
 
     if st.button("Add Edge"):
-        G.add_edge(u, v, weight=w)
-        st.session_state.pos = nx.kamada_kawai_layout(G)
-        st.success("Edge added")
+        if u and v:
+            G.add_edge(u, v, weight=w)
+            st.session_state.pos = nx.spring_layout(G, seed=42)
+            st.success("Edge added")
+        else:
+            st.warning("Please enter node names")
 
 with col2:
     st.subheader("Find Path")
