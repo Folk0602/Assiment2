@@ -25,18 +25,31 @@ if "G" not in st.session_state:
         ("Lop Buri", "Nakhon Nayok", 7),
         ("Lop Buri", "Chai Nat", 4)
     ])
+
+    pos = nx.spring_layout(G, seed=42)
+
     st.session_state.G = G
-    st.session_state.pos = nx.spring_layout(G, seed=42)
+    st.session_state.pos = pos
 
 G = st.session_state.G
 pos = st.session_state.pos
 
 # =====================
-# UPDATE LAYOUT (ไม่กระโดดแรง)
+# UPDATE LAYOUT (ไม่ให้ node เก่าขยับ)
 # =====================
-def update_layout():
+def update_layout(new_node=None):
     global pos
+
+    if new_node:
+        # วาง node ใหม่แบบสุ่มใกล้กราฟ
+        pos[new_node] = (
+            random.uniform(-1, 1),
+            random.uniform(-1, 1)
+        )
+
+    # 🔥 ล็อคตำแหน่ง node เก่า
     pos = nx.spring_layout(G, pos=pos, fixed=pos.keys())
+
     st.session_state.pos = pos
 
 # =====================
@@ -48,8 +61,8 @@ def draw_graph(path=None, packet_positions=None):
     nx.draw(G, pos,
             with_labels=True,
             node_color='skyblue',
-            node_size=200,
-            font_size=5,
+            node_size=800,
+            font_size=8,
             ax=ax)
 
     nx.draw_networkx_edge_labels(
@@ -144,11 +157,13 @@ def animate(path, num_packets):
 # =====================
 # UI
 # =====================
-st.title("🚦 Graph Traffic Simulation (FINAL)")
+st.title("🚦 Graph Traffic Simulation (Stable Layout)")
 
 col1, col2 = st.columns(2)
 
+# ---------------------
 # CRUD
+# ---------------------
 with col1:
     st.subheader("Manage Graph")
 
@@ -156,14 +171,15 @@ with col1:
     if st.button("Add Node"):
         if node:
             G.add_node(node)
-            update_layout()   # 🔥 แก้ error ตรงนี้
+            update_layout(node)  # 🔥 ไม่ให้ graph เดิมขยับ
             st.success("Node added")
 
     del_node = st.text_input("Delete Node")
     if st.button("Delete Node"):
         if del_node in G.nodes:
             G.remove_node(del_node)
-            update_layout()   # 🔥 สำคัญ
+            pos.pop(del_node, None)
+            update_layout()
             st.success("Node removed")
         else:
             st.error("Node not found")
@@ -175,10 +191,12 @@ with col1:
     if st.button("Add Edge"):
         if u and v:
             G.add_edge(u, v, weight=w)
-            update_layout()   # 🔥 กันพลาด
+            update_layout()
             st.success("Edge added")
 
-# Simulation
+# ---------------------
+# SIMULATION
+# ---------------------
 with col2:
     st.subheader("Simulation")
 
@@ -194,6 +212,8 @@ with col2:
         except:
             st.error("Path not found")
 
-# Show graph
+# ---------------------
+# SHOW GRAPH
+# ---------------------
 st.subheader("Graph View")
 st.pyplot(draw_graph())
