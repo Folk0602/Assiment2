@@ -32,20 +32,26 @@ G = st.session_state.G
 pos = st.session_state.pos
 
 # =====================
+# UPDATE LAYOUT (ไม่กระโดดแรง)
+# =====================
+def update_layout():
+    global pos
+    pos = nx.spring_layout(G, pos=pos, fixed=pos.keys())
+    st.session_state.pos = pos
+
+# =====================
 # DRAW
 # =====================
 def draw_graph(path=None, packet_positions=None):
     fig, ax = plt.subplots()
 
-    # 🔥 ลดขนาด font node
     nx.draw(G, pos,
             with_labels=True,
             node_color='skyblue',
-            node_size=200,
+            node_size=800,
             font_size=8,
             ax=ax)
 
-    # 🔥 ลด font edge weight
     nx.draw_networkx_edge_labels(
         G, pos,
         edge_labels=nx.get_edge_attributes(G, 'weight'),
@@ -53,12 +59,10 @@ def draw_graph(path=None, packet_positions=None):
         ax=ax
     )
 
-    # highlight path
     if path:
         edges = list(zip(path, path[1:]))
         nx.draw_networkx_edges(G, pos, edgelist=edges, edge_color='red', width=2, ax=ax)
 
-    # 🔥 packet เล็กลง
     if packet_positions:
         for i, (x, y) in enumerate(packet_positions):
             ax.scatter(x, y, s=120, color='yellow', edgecolors='black')
@@ -69,7 +73,7 @@ def draw_graph(path=None, packet_positions=None):
     return fig
 
 # =====================
-# ANIMATION (SMOOTH)
+# ANIMATION
 # =====================
 def animate(path, num_packets):
     placeholder = st.empty()
@@ -93,7 +97,6 @@ def animate(path, num_packets):
 
     step = 0
     running = True
-    start_time = time.time()
 
     while running:
         running = False
@@ -138,13 +141,10 @@ def animate(path, num_packets):
         time.sleep(0.01)
         step += 1
 
-    end_time = time.time()
-    return end_time - start_time
-
 # =====================
 # UI
 # =====================
-st.title("🚦 Graph Traffic Simulation")
+st.title("🚦 Graph Traffic Simulation (FINAL)")
 
 col1, col2 = st.columns(2)
 
@@ -156,14 +156,14 @@ with col1:
     if st.button("Add Node"):
         if node:
             G.add_node(node)
-            st.session_state.pos = nx.spring_layout(G, seed=42)
+            update_layout()   # 🔥 แก้ error ตรงนี้
             st.success("Node added")
 
     del_node = st.text_input("Delete Node")
     if st.button("Delete Node"):
         if del_node in G.nodes:
             G.remove_node(del_node)
-            st.session_state.pos = nx.spring_layout(G, seed=42)
+            update_layout()   # 🔥 สำคัญ
             st.success("Node removed")
         else:
             st.error("Node not found")
@@ -175,6 +175,7 @@ with col1:
     if st.button("Add Edge"):
         if u and v:
             G.add_edge(u, v, weight=w)
+            update_layout()   # 🔥 กันพลาด
             st.success("Edge added")
 
 # Simulation
@@ -189,11 +190,7 @@ with col2:
         try:
             path = nx.shortest_path(G, start, end, weight='weight')
             st.write("Path:", " -> ".join(path))
-
-            t = animate(path, packets)
-
-            st.success(f"Time: {t:.2f} sec")
-
+            animate(path, packets)
         except:
             st.error("Path not found")
 
