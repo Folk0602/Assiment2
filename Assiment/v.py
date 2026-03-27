@@ -7,7 +7,7 @@ import random
 st.set_page_config(layout="wide")
 
 # =====================
-# INIT STATE
+# INIT
 # =====================
 if "G" not in st.session_state:
     G = nx.Graph()
@@ -25,17 +25,14 @@ if "G" not in st.session_state:
         ("Lop Buri", "Nakhon Nayok", 7),
         ("Lop Buri", "Chai Nat", 4)
     ])
-
     st.session_state.G = G
-
-    # 🔥 ใช้ spring_layout (ไม่ต้อง scipy)
     st.session_state.pos = nx.spring_layout(G, seed=42)
 
 G = st.session_state.G
 pos = st.session_state.pos
 
 # =====================
-# DRAW GRAPH
+# DRAW
 # =====================
 def draw_graph(highlight_path=None, packet_positions=None):
     fig, ax = plt.subplots()
@@ -70,11 +67,13 @@ def animate(path, num_packets):
 
     original_weights = {}
     traffic = {}
+    total_distance = 0
 
     for i in range(len(path)-1):
         u, v = path[i], path[i+1]
         original_weights[(u, v)] = G[u][v]['weight']
         traffic[(u, v)] = 0
+        total_distance += G[u][v]['weight']
 
     packets = []
     for i in range(num_packets):
@@ -87,6 +86,7 @@ def animate(path, num_packets):
 
     step = 0
     running = True
+    start_time = time.time()
 
     while running:
         running = False
@@ -139,18 +139,41 @@ def animate(path, num_packets):
         fig = draw_graph(path, packet_positions)
         placeholder.pyplot(fig)
 
-        time.sleep(0.05)
+        time.sleep(0.03)
         step += 1
+
+    end_time = time.time()
+    return end_time - start_time, total_distance
 
 # =====================
 # UI
 # =====================
-st.title("🚦 Graph Traffic Simulation")
+st.title("🚦 Graph Traffic Simulation (Streamlit Version)")
 
 col1, col2 = st.columns(2)
 
+# ---------------------
+# CRUD
+# ---------------------
 with col1:
-    st.subheader("Add Edge")
+    st.subheader("➕ Add Node / Edge")
+
+    node = st.text_input("Node name")
+    if st.button("Add Node"):
+        if node:
+            G.add_node(node)
+            st.session_state.pos = nx.spring_layout(G, seed=42)
+            st.success("Node added")
+
+    del_node = st.text_input("Delete Node")
+    if st.button("Delete Node"):
+        if del_node in G.nodes:
+            G.remove_node(del_node)
+            st.session_state.pos = nx.spring_layout(G, seed=42)
+            st.success("Node removed")
+        else:
+            st.error("Node not found")
+
     u = st.text_input("From")
     v = st.text_input("To")
     w = st.number_input("Weight", value=1)
@@ -158,24 +181,33 @@ with col1:
     if st.button("Add Edge"):
         if u and v:
             G.add_edge(u, v, weight=w)
-            st.session_state.pos = nx.spring_layout(G, seed=42)
             st.success("Edge added")
-        else:
-            st.warning("Please enter node names")
 
+# ---------------------
+# PATH + ANIMATION
+# ---------------------
 with col2:
-    st.subheader("Find Path")
+    st.subheader("🚀 Find Path")
+
     start = st.text_input("Start Node")
     end = st.text_input("End Node")
-    packets = st.number_input("Packets", value=1, min_value=1)
+    packets = st.number_input("Packets", min_value=1, value=1)
 
     if st.button("Run Simulation"):
         try:
             path = nx.shortest_path(G, start, end, weight='weight')
             st.write("Path:", " -> ".join(path))
-            animate(path, packets)
+
+            travel_time, distance = animate(path, packets)
+
+            st.success(f"Distance: {distance}")
+            st.success(f"Time: {travel_time:.2f} sec")
+
         except:
             st.error("Path not found")
 
-st.subheader("Graph View")
+# ---------------------
+# SHOW GRAPH
+# ---------------------
+st.subheader("📊 Graph View")
 st.pyplot(draw_graph())
