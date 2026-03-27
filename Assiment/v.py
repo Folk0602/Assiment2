@@ -37,28 +37,34 @@ pos = st.session_state.pos
 def draw_graph(path=None, packet_positions=None):
     fig, ax = plt.subplots()
 
+    # 🔥 ลดขนาด font node
     nx.draw(G, pos,
             with_labels=True,
             node_color='skyblue',
             node_size=200,
+            font_size=8,
             ax=ax)
 
+    # 🔥 ลด font edge weight
     nx.draw_networkx_edge_labels(
         G, pos,
         edge_labels=nx.get_edge_attributes(G, 'weight'),
+        font_size=7,
         ax=ax
     )
 
     # highlight path
     if path:
         edges = list(zip(path, path[1:]))
-        nx.draw_networkx_edges(G, pos, edgelist=edges, edge_color='red', width=3, ax=ax)
+        nx.draw_networkx_edges(G, pos, edgelist=edges, edge_color='red', width=2, ax=ax)
 
-    # draw packets
+    # 🔥 packet เล็กลง
     if packet_positions:
         for i, (x, y) in enumerate(packet_positions):
-            ax.scatter(x, y, s=250, color='yellow', edgecolors='black')
-            ax.text(x, y, str(i), fontsize=8)
+            ax.scatter(x, y, s=120, color='yellow', edgecolors='black')
+            ax.text(x, y, str(i), fontsize=6)
+
+    ax.set_title("Traffic Simulation", fontsize=10)
 
     return fig
 
@@ -76,13 +82,12 @@ def animate(path, num_packets):
         original_weights[(u, v)] = G[u][v]['weight']
         traffic[(u, v)] = 0
 
-    # 🔥 packet ลื่น
     packets = []
     for i in range(num_packets):
         packets.append({
             "edge_index": 0,
             "t": 0.0,
-            "speed": random.uniform(0.005, 0.01),  # smooth
+            "speed": random.uniform(0.005, 0.01),
             "delay": i * 8
         })
 
@@ -107,7 +112,6 @@ def animate(path, num_packets):
             u = path[p["edge_index"]]
             v = path[p["edge_index"]+1]
 
-            # เข้า edge
             if p["t"] == 0:
                 traffic[(u, v)] += 1
                 G[u][v]['weight'] = original_weights[(u, v)] + traffic[(u, v)]
@@ -115,7 +119,6 @@ def animate(path, num_packets):
             x1, y1 = pos[u]
             x2, y2 = pos[v]
 
-            # 🔥 smooth movement
             p["t"] += p["speed"]
 
             x = x1 + (x2 - x1) * p["t"]
@@ -123,7 +126,6 @@ def animate(path, num_packets):
 
             packet_positions.append((x, y))
 
-            # ออกจาก edge
             if p["t"] >= 1:
                 traffic[(u, v)] -= 1
                 G[u][v]['weight'] = original_weights[(u, v)] + traffic[(u, v)]
@@ -133,7 +135,6 @@ def animate(path, num_packets):
         fig = draw_graph(path, packet_positions)
         placeholder.pyplot(fig)
 
-        # 🔥 ลื่นขึ้น
         time.sleep(0.01)
         step += 1
 
@@ -143,13 +144,13 @@ def animate(path, num_packets):
 # =====================
 # UI
 # =====================
-st.title("🚦 Graph Traffic Simulation (Smooth Version)")
+st.title("🚦 Graph Traffic Simulation")
 
 col1, col2 = st.columns(2)
 
 # CRUD
 with col1:
-    st.subheader("➕ Manage Graph")
+    st.subheader("Manage Graph")
 
     node = st.text_input("Add Node")
     if st.button("Add Node"):
@@ -178,7 +179,7 @@ with col1:
 
 # Simulation
 with col2:
-    st.subheader("🚀 Simulation")
+    st.subheader("Simulation")
 
     start = st.text_input("Start Node")
     end = st.text_input("End Node")
@@ -191,11 +192,11 @@ with col2:
 
             t = animate(path, packets)
 
-            st.success(f"Simulation Time: {t:.2f} sec")
+            st.success(f"Time: {t:.2f} sec")
 
         except:
             st.error("Path not found")
 
 # Show graph
-st.subheader("📊 Graph View")
+st.subheader("Graph View")
 st.pyplot(draw_graph())
