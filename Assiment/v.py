@@ -1,8 +1,8 @@
 import streamlit as st
 import networkx as nx
 import matplotlib.pyplot as plt
-import matplotlib.patches as patches
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
+import matplotlib.image as mpimg
 import time
 import random
 import os
@@ -17,32 +17,18 @@ BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
 HOUSE_PATH = os.path.join(BASE_DIR, "Assiment", "housee.jpg")
 CAR_PATH   = os.path.join(BASE_DIR, "Assiment", "carr.jpg")
 
-def load_icon_on_bg(path, bg_color=(0.68, 0.85, 0.90, 1.0), size=64):
-    """
-    โหลด PNG icon สีดำบน transparent bg
-    แล้ว composite ลงบน background สี bg_color
-    คืน numpy array RGBA ขนาด (size, size, 4)
-    """
+def load_jpg(path, size=64):
+    """โหลด JPG (พื้นขาว) แปลงเป็น numpy array RGB"""
     from PIL import Image
-    img = Image.open(path).convert("RGBA").resize((size, size), Image.LANCZOS)
-    arr = np.array(img, dtype=float) / 255.0   # shape (H,W,4)
-
-    # สร้าง canvas สี bg_color
-    canvas = np.ones((size, size, 4), dtype=float)
-    canvas[:, :, :] = bg_color                  # fill background
-
-    # alpha compositing:  out = src_alpha*src + (1-src_alpha)*dst
-    alpha = arr[:, :, 3:4]
-    canvas[:, :, :3] = alpha * arr[:, :, :3] + (1 - alpha) * canvas[:, :, :3]
-    canvas[:, :, 3]  = 1.0                      # fully opaque
-
-    return (canvas * 255).astype(np.uint8)
+    img = Image.open(path).convert("RGB").resize((size, size), Image.LANCZOS)
+    return np.array(img)
 
 try:
-    house_img = load_icon_on_bg(HOUSE_PATH, size=64)
-    car_img   = load_icon_on_bg(CAR_PATH,   bg_color=(1.0, 0.85, 0.3, 1.0), size=48)
+    house_img = load_jpg(HOUSE_PATH, size=64)
+    car_img   = load_jpg(CAR_PATH,   size=48)
     USE_IMG   = True
 except Exception as e:
+    st.warning(f"ไม่สามารถโหลดรูปได้: {e}")
     USE_IMG   = False
 
 # =====================
@@ -105,11 +91,20 @@ def draw_graph(path=None, packet_positions=None):
             edge_color="red", width=3, ax=ax,
         )
 
-    # Nodes
+    # Nodes — วาดรูปบ้าน
     for node, (x, y) in pos.items():
         if USE_IMG:
-            ib = OffsetImage(house_img, zoom=0.55, zorder=4)
-            ab = AnnotationBbox(ib, (x, y), frameon=False, zorder=4)
+            # zoom=0.55 → รูปขนาดพอดีโหนด
+            ib = OffsetImage(house_img, zoom=0.55)
+            ab = AnnotationBbox(
+                ib, (x, y),
+                frameon=True,                          # กรอบช่วยให้เห็นชัด
+                bboxprops=dict(edgecolor="steelblue",
+                               facecolor="lightblue",
+                               linewidth=1.5,
+                               boxstyle="round,pad=0.1"),
+                zorder=4,
+            )
             ax.add_artist(ab)
         else:
             circle = plt.Circle((x, y), NODE_RADIUS,
@@ -120,17 +115,25 @@ def draw_graph(path=None, packet_positions=None):
                     ha="center", va="center", zorder=4)
 
         # ชื่อโหนด ด้านล่าง
-        ax.text(x, y - NODE_RADIUS - 0.07, node,
+        ax.text(x, y - NODE_RADIUS - 0.10, node,
                 fontsize=7, ha="center", va="top", zorder=5,
-                bbox=dict(facecolor="white", alpha=0.7,
+                bbox=dict(facecolor="white", alpha=0.8,
                           edgecolor="none", pad=1))
 
-    # Packets (รถ)
+    # Packets — วาดรูปรถ
     if packet_positions:
         for (px, py) in packet_positions:
             if USE_IMG:
-                ib2 = OffsetImage(car_img, zoom=0.45, zorder=6)
-                ab2 = AnnotationBbox(ib2, (px, py), frameon=False, zorder=6)
+                ib2 = OffsetImage(car_img, zoom=0.40)
+                ab2 = AnnotationBbox(
+                    ib2, (px, py),
+                    frameon=True,
+                    bboxprops=dict(edgecolor="orange",
+                                   facecolor="lightyellow",
+                                   linewidth=1.2,
+                                   boxstyle="round,pad=0.05"),
+                    zorder=6,
+                )
                 ax.add_artist(ab2)
             else:
                 ax.text(px, py, "🚗", fontsize=12,
@@ -138,10 +141,10 @@ def draw_graph(path=None, packet_positions=None):
 
     ax.set_title("Smart Traffic Simulation", fontsize=12, fontweight="bold")
     ax.axis("off")
-    ax.set_xlim([min(x for x, y in pos.values()) - 0.3,
-                 max(x for x, y in pos.values()) + 0.3])
-    ax.set_ylim([min(y for x, y in pos.values()) - 0.3,
-                 max(y for x, y in pos.values()) + 0.3])
+    ax.set_xlim([min(x for x, y in pos.values()) - 0.35,
+                 max(x for x, y in pos.values()) + 0.35])
+    ax.set_ylim([min(y for x, y in pos.values()) - 0.35,
+                 max(y for x, y in pos.values()) + 0.35])
     plt.tight_layout()
     return fig
 
@@ -214,20 +217,15 @@ def animate(path, num_packets):
 # COMPUTE PATH INFO
 # =====================
 def get_path_info(G, path):
-    """คำนวณระยะทางรวม และเวลาเดินทางโดยประมาณ"""
     total_dist = 0
     details    = []
     for u, v in zip(path, path[1:]):
         w = G[u][v]["weight"]
         total_dist += w
         details.append((u, v, w))
-
-    # สมมติ weight = ระยะทาง (หน่วย: 10 กม.)
-    dist_km      = total_dist * 10
-    # สมมติความเร็วเฉลี่ย 80 กม./ชม.
-    speed_kmh    = 80
-    travel_min   = (dist_km / speed_kmh) * 60
-
+    dist_km    = total_dist * 10
+    speed_kmh  = 80
+    travel_min = (dist_km / speed_kmh) * 60
     return total_dist, dist_km, travel_min, details
 
 # =====================
@@ -286,14 +284,12 @@ with col2:
 
                 st.write("**เส้นทาง:**", " → ".join(path))
 
-                # --- แสดง metric ---
                 m1, m2, m3 = st.columns(3)
                 m1.metric("🛣️ ระยะทาง (น้ำหนักรวม)", f"{total_w} หน่วย")
                 m2.metric("📏 ระยะทางโดยประมาณ", f"{dist_km:.0f} กม.")
                 m3.metric("⏱️ เวลาเดินทางโดยประมาณ",
                           f"{int(travel_min)} นาที {int((travel_min % 1)*60)} วินาที")
 
-                # --- ตารางรายละเอียดแต่ละช่วง ---
                 with st.expander("📋 รายละเอียดแต่ละช่วง"):
                     rows = [{"จาก": u, "ถึง": v, "น้ำหนัก": ww,
                              "ระยะทาง (กม.)": ww * 10,
