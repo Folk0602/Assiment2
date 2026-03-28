@@ -5,16 +5,16 @@ import matplotlib.image as mpimg
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 import time
 import random
-import os
+#import os
 
 st.set_page_config(layout="wide")
 
 # =====================
 # LOAD IMAGE (with fallback)
 # =====================
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-HOUSE_PATH = os.path.join(BASE_DIR, "Assiment", "house.png")
-CAR_PATH   = os.path.join(BASE_DIR, "Assiment", "car.png")
+#BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+HOUSE_PATH = mpimg.imread("Assiment/house.png")
+CAR_PATH   = mpimg.imread("Assiment/car.png")
 
 try:
     from PIL import Image
