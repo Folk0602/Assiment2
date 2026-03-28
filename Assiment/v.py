@@ -12,8 +12,8 @@ st.set_page_config(layout="wide")
 # =====================
 # LOAD IMAGE
 # =====================
-house_img = mpimg.imread("Assiment/house.jpg")
-car_img = mpimg.imread("Assiment/car.jpg")
+house_img = mpimg.imread("Assiment/house.png")
+car_img = mpimg.imread("Assiment/car.png")
 
 # =====================
 # INIT
