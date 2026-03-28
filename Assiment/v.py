@@ -79,8 +79,8 @@ def draw_graph(path=None, packet_positions=None):
     # 🏠 node + สีพื้นหลัง
     for node, (x, y) in pos.items():
         # วาดวงกลมสีพื้นหลัง
-        circle = plt.Circle((x, y), 0.05, color="lightblue", zorder=0)
-        ax.add_artist(circle)
+        #circle = plt.Circle((x, y), 0.05, color="lightblue", zorder=0)
+        #ax.add_artist(circle)
 
         # วางรูปบ้านทับ
         imagebox = OffsetImage(house_img, zoom=0.05)  # ปรับเล็กลง
