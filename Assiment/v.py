@@ -1,31 +1,46 @@
 import streamlit as st
 import networkx as nx
 import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
+import matplotlib.patches as patches
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 import time
 import random
 import os
+import numpy as np
 
 st.set_page_config(layout="wide")
 
 # =====================
-# LOAD IMAGE (with fallback)
+# LOAD IMAGE
 # =====================
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
 HOUSE_PATH = os.path.join(BASE_DIR, "Assiment", "house.png")
 CAR_PATH   = os.path.join(BASE_DIR, "Assiment", "car.png")
 
-try:
+def load_icon_on_bg(path, bg_color=(0.68, 0.85, 0.90, 1.0), size=64):
+    """
+    โหลด PNG icon สีดำบน transparent bg
+    แล้ว composite ลงบน background สี bg_color
+    คืน numpy array RGBA ขนาด (size, size, 4)
+    """
     from PIL import Image
-    import numpy as np
+    img = Image.open(path).convert("RGBA").resize((size, size), Image.LANCZOS)
+    arr = np.array(img, dtype=float) / 255.0   # shape (H,W,4)
 
-    # เปิดด้วย PIL เพื่อจัดการ RGBA และ resize ให้ชัดขึ้น
-    house_pil = Image.open(HOUSE_PATH).convert("RGBA").resize((64, 64), Image.LANCZOS)
-    car_pil   = Image.open(CAR_PATH).convert("RGBA").resize((48, 48), Image.LANCZOS)
+    # สร้าง canvas สี bg_color
+    canvas = np.ones((size, size, 4), dtype=float)
+    canvas[:, :, :] = bg_color                  # fill background
 
-    house_img = np.array(house_pil)
-    car_img   = np.array(car_pil)
+    # alpha compositing:  out = src_alpha*src + (1-src_alpha)*dst
+    alpha = arr[:, :, 3:4]
+    canvas[:, :, :3] = alpha * arr[:, :, :3] + (1 - alpha) * canvas[:, :, :3]
+    canvas[:, :, 3]  = 1.0                      # fully opaque
+
+    return (canvas * 255).astype(np.uint8)
+
+try:
+    house_img = load_icon_on_bg(HOUSE_PATH, size=64)
+    car_img   = load_icon_on_bg(CAR_PATH,   bg_color=(1.0, 0.85, 0.3, 1.0), size=48)
     USE_IMG   = True
 except Exception as e:
     USE_IMG   = False
@@ -64,7 +79,7 @@ def update_layout(new_node=None):
     if new_node:
         pos[new_node] = (random.uniform(-1, 1), random.uniform(-1, 1))
     fixed = list(pos.keys())
-    pos = nx.spring_layout(G, pos=pos, fixed=fixed if fixed else None)
+    pos   = nx.spring_layout(G, pos=pos, fixed=fixed if fixed else None)
     st.session_state.pos = pos
 
 # =====================
@@ -90,37 +105,21 @@ def draw_graph(path=None, packet_positions=None):
             edge_color="red", width=3, ax=ax,
         )
 
-    # คำนวณ axis limits ก่อนเพื่อใช้ใน inset_axes
-    x_vals = [xv for xv, yv in pos.values()]
-    y_vals = [yv for xv, yv in pos.values()]
-    x_min, x_max = min(x_vals) - 0.3, max(x_vals) + 0.3
-    y_min, y_max = min(y_vals) - 0.3, max(y_vals) + 0.3
-    x_range = x_max - x_min
-    y_range = y_max - y_min
-
     # Nodes
     for node, (x, y) in pos.items():
-        circle = plt.Circle((x, y), NODE_RADIUS,
-                             color="lightblue", ec="steelblue",
-                             linewidth=1.5, zorder=3)
-        ax.add_artist(circle)
-
         if USE_IMG:
-            ax_x = (x - x_min) / x_range
-            ax_y = (y - y_min) / y_range
-            sz = 0.075
-
-            axin = ax.inset_axes(
-                [ax_x - sz/2, ax_y - sz/2, sz, sz],
-                transform=ax.transAxes
-            )
-            axin.imshow(house_img, interpolation="nearest")
-            axin.axis("off")
+            ib = OffsetImage(house_img, zoom=0.55, zorder=4)
+            ab = AnnotationBbox(ib, (x, y), frameon=False, zorder=4)
+            ax.add_artist(ab)
         else:
+            circle = plt.Circle((x, y), NODE_RADIUS,
+                                 color="lightblue", ec="steelblue",
+                                 linewidth=1.5, zorder=3)
+            ax.add_artist(circle)
             ax.text(x, y, "🏠", fontsize=10,
                     ha="center", va="center", zorder=4)
 
-        # ชื่อโหนด → ด้านล่าง
+        # ชื่อโหนด ด้านล่าง
         ax.text(x, y - NODE_RADIUS - 0.07, node,
                 fontsize=7, ha="center", va="top", zorder=5,
                 bbox=dict(facecolor="white", alpha=0.7,
@@ -130,16 +129,9 @@ def draw_graph(path=None, packet_positions=None):
     if packet_positions:
         for (px, py) in packet_positions:
             if USE_IMG:
-                ax_x = (px - x_min) / x_range
-                ax_y = (py - y_min) / y_range
-                sz = 0.055
-
-                axin2 = ax.inset_axes(
-                    [ax_x - sz/2, ax_y - sz/2, sz, sz],
-                    transform=ax.transAxes
-                )
-                axin2.imshow(car_img, interpolation="nearest")
-                axin2.axis("off")
+                ib2 = OffsetImage(car_img, zoom=0.45, zorder=6)
+                ab2 = AnnotationBbox(ib2, (px, py), frameon=False, zorder=6)
+                ax.add_artist(ab2)
             else:
                 ax.text(px, py, "🚗", fontsize=12,
                         ha="center", va="center", zorder=6)
@@ -157,7 +149,7 @@ def draw_graph(path=None, packet_positions=None):
 # ANIMATION
 # =====================
 def animate(path, num_packets):
-    placeholder    = st.empty()
+    placeholder      = st.empty()
     original_weights = {}
     traffic          = {}
 
@@ -219,6 +211,26 @@ def animate(path, num_packets):
         step += 1
 
 # =====================
+# COMPUTE PATH INFO
+# =====================
+def get_path_info(G, path):
+    """คำนวณระยะทางรวม และเวลาเดินทางโดยประมาณ"""
+    total_dist = 0
+    details    = []
+    for u, v in zip(path, path[1:]):
+        w = G[u][v]["weight"]
+        total_dist += w
+        details.append((u, v, w))
+
+    # สมมติ weight = ระยะทาง (หน่วย: 10 กม.)
+    dist_km      = total_dist * 10
+    # สมมติความเร็วเฉลี่ย 80 กม./ชม.
+    speed_kmh    = 80
+    travel_min   = (dist_km / speed_kmh) * 60
+
+    return total_dist, dist_km, travel_min, details
+
+# =====================
 # UI
 # =====================
 st.title("🚦 Smart Traffic Simulation")
@@ -270,8 +282,27 @@ with col2:
         else:
             try:
                 path = nx.shortest_path(G, start, end, weight="weight")
-                st.write("Path:", " → ".join(path))
+                total_w, dist_km, travel_min, seg = get_path_info(G, path)
+
+                st.write("**เส้นทาง:**", " → ".join(path))
+
+                # --- แสดง metric ---
+                m1, m2, m3 = st.columns(3)
+                m1.metric("🛣️ ระยะทาง (น้ำหนักรวม)", f"{total_w} หน่วย")
+                m2.metric("📏 ระยะทางโดยประมาณ", f"{dist_km:.0f} กม.")
+                m3.metric("⏱️ เวลาเดินทางโดยประมาณ",
+                          f"{int(travel_min)} นาที {int((travel_min % 1)*60)} วินาที")
+
+                # --- ตารางรายละเอียดแต่ละช่วง ---
+                with st.expander("📋 รายละเอียดแต่ละช่วง"):
+                    rows = [{"จาก": u, "ถึง": v, "น้ำหนัก": ww,
+                             "ระยะทาง (กม.)": ww * 10,
+                             "เวลา (นาที)": round(ww * 10 / 80 * 60, 1)}
+                            for u, v, ww in seg]
+                    st.table(rows)
+
                 animate(path, int(packets))
+
             except nx.NetworkXNoPath:
                 st.error("No path found between these nodes")
             except Exception as e:
