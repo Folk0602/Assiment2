@@ -5,16 +5,16 @@ import matplotlib.image as mpimg
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 import time
 import random
-#import os
+import os
 
 st.set_page_config(layout="wide")
 
 # =====================
 # LOAD IMAGE (with fallback)
 # =====================
-#BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-HOUSE_PATH = mpimg.imread("Assiment/house.png")
-CAR_PATH   = mpimg.imread("Assiment/car.png")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+HOUSE_PATH = os.path.join(BASE_DIR, "Assiment", "house.png")
+CAR_PATH   = os.path.join(BASE_DIR, "Assiment", "car.png")
 
 try:
     from PIL import Image
@@ -90,6 +90,14 @@ def draw_graph(path=None, packet_positions=None):
             edge_color="red", width=3, ax=ax,
         )
 
+    # คำนวณ axis limits ก่อนเพื่อใช้ใน inset_axes
+    x_vals = [xv for xv, yv in pos.values()]
+    y_vals = [yv for xv, yv in pos.values()]
+    x_min, x_max = min(x_vals) - 0.3, max(x_vals) + 0.3
+    y_min, y_max = min(y_vals) - 0.3, max(y_vals) + 0.3
+    x_range = x_max - x_min
+    y_range = y_max - y_min
+
     # Nodes
     for node, (x, y) in pos.items():
         circle = plt.Circle((x, y), NODE_RADIUS,
@@ -98,9 +106,16 @@ def draw_graph(path=None, packet_positions=None):
         ax.add_artist(circle)
 
         if USE_IMG:
-            ib = OffsetImage(house_img, zoom=0.45)
-            ab = AnnotationBbox(ib, (x, y), frameon=False, zorder=4)
-            ax.add_artist(ab)
+            ax_x = (x - x_min) / x_range
+            ax_y = (y - y_min) / y_range
+            sz = 0.075
+
+            axin = ax.inset_axes(
+                [ax_x - sz/2, ax_y - sz/2, sz, sz],
+                transform=ax.transAxes
+            )
+            axin.imshow(house_img, interpolation="nearest")
+            axin.axis("off")
         else:
             ax.text(x, y, "🏠", fontsize=10,
                     ha="center", va="center", zorder=4)
@@ -113,13 +128,20 @@ def draw_graph(path=None, packet_positions=None):
 
     # Packets (รถ)
     if packet_positions:
-        for (x, y) in packet_positions:
+        for (px, py) in packet_positions:
             if USE_IMG:
-                ib = OffsetImage(car_img, zoom=0.35)
-                ab = AnnotationBbox(ib, (x, y), frameon=False, zorder=6)
-                ax.add_artist(ab)
+                ax_x = (px - x_min) / x_range
+                ax_y = (py - y_min) / y_range
+                sz = 0.055
+
+                axin2 = ax.inset_axes(
+                    [ax_x - sz/2, ax_y - sz/2, sz, sz],
+                    transform=ax.transAxes
+                )
+                axin2.imshow(car_img, interpolation="nearest")
+                axin2.axis("off")
             else:
-                ax.text(x, y, "🚗", fontsize=12,
+                ax.text(px, py, "🚗", fontsize=12,
                         ha="center", va="center", zorder=6)
 
     ax.set_title("Smart Traffic Simulation", fontsize=12, fontweight="bold")
