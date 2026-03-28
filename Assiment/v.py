@@ -14,8 +14,8 @@ st.set_page_config(layout="wide")
 # LOAD IMAGE
 # =====================
 BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
-HOUSE_PATH = os.path.join(BASE_DIR, "housee.jpg")
-CAR_PATH   = os.path.join(BASE_DIR, "carr.jpg")
+HOUSE_PATH = os.path.join(BASE_DIR, "house.png")
+CAR_PATH   = os.path.join(BASE_DIR, "car.png")
 
 def load_jpg(path, size=64):
     """โหลด JPG (พื้นขาว) แปลงเป็น numpy array RGB"""
