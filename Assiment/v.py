@@ -17,10 +17,17 @@ HOUSE_PATH = os.path.join(BASE_DIR, "Assiment", "house.png")
 CAR_PATH   = os.path.join(BASE_DIR, "Assiment", "car.png")
 
 try:
-    house_img = mpimg.imread(HOUSE_PATH)
-    car_img   = mpimg.imread(CAR_PATH)
+    from PIL import Image
+    import numpy as np
+
+    # เปิดด้วย PIL เพื่อจัดการ RGBA และ resize ให้ชัดขึ้น
+    house_pil = Image.open(HOUSE_PATH).convert("RGBA").resize((64, 64), Image.LANCZOS)
+    car_pil   = Image.open(CAR_PATH).convert("RGBA").resize((48, 48), Image.LANCZOS)
+
+    house_img = np.array(house_pil)
+    car_img   = np.array(car_pil)
     USE_IMG   = True
-except Exception:
+except Exception as e:
     USE_IMG   = False
 
 # =====================
@@ -91,7 +98,7 @@ def draw_graph(path=None, packet_positions=None):
         ax.add_artist(circle)
 
         if USE_IMG:
-            ib = OffsetImage(house_img, zoom=0.05)
+            ib = OffsetImage(house_img, zoom=0.45)
             ab = AnnotationBbox(ib, (x, y), frameon=False, zorder=4)
             ax.add_artist(ab)
         else:
@@ -108,7 +115,7 @@ def draw_graph(path=None, packet_positions=None):
     if packet_positions:
         for (x, y) in packet_positions:
             if USE_IMG:
-                ib = OffsetImage(car_img, zoom=0.03)
+                ib = OffsetImage(car_img, zoom=0.35)
                 ab = AnnotationBbox(ib, (x, y), frameon=False, zorder=6)
                 ax.add_artist(ab)
             else:
