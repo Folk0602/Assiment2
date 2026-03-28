@@ -3,12 +3,25 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import time
 import random
+import os
 
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 import matplotlib.image as mpimg
 
 st.set_page_config(layout="wide")
 
+
+if os.path.exists("Assiment/house.jpg"):
+    house_img = mpimg.imread("Assiment/house.jpg")
+else:
+    st.error("ไม่พบไฟล์ house.jpg")
+
+if os.path.exists("Assiment/car.jpg"):
+    car_img = mpimg.imread("Assiment/car.jpg")
+else:
+    st.error("ไม่พบไฟล์ car.jpg")
+
+    
 # =====================
 # LOAD IMAGE
 # =====================
