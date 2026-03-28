@@ -14,8 +14,8 @@ st.set_page_config(layout="wide")
 # LOAD IMAGE
 # =====================
 BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
-HOUSE_PATH = os.path.join(BASE_DIR, "Assiment", "house.png")
-CAR_PATH   = os.path.join(BASE_DIR, "Assiment", "car.png")
+HOUSE_PATH = os.path.join(BASE_DIR, "Assiment", "housee.jpg")
+CAR_PATH   = os.path.join(BASE_DIR, "Assiment", "carr.jpg")
 
 def load_icon_on_bg(path, bg_color=(0.68, 0.85, 0.90, 1.0), size=64):
     """
