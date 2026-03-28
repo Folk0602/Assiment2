@@ -61,6 +61,9 @@ def update_layout(new_node=None):
 # =====================
 # DRAW GRAPH (ใช้รูป)
 # =====================
+# =====================
+# DRAW GRAPH (ใช้รูป + สีโหนด)
+# =====================
 def draw_graph(path=None, packet_positions=None):
     fig, ax = plt.subplots()
 
@@ -73,12 +76,18 @@ def draw_graph(path=None, packet_positions=None):
         ax=ax
     )
 
-    # 🏠 node
+    # 🏠 node + สีพื้นหลัง
     for node, (x, y) in pos.items():
-        imagebox = OffsetImage(house_img, zoom=0.08)
+        # วาดวงกลมสีพื้นหลัง
+        circle = plt.Circle((x, y), 0.05, color="lightblue", zorder=0)
+        ax.add_artist(circle)
+
+        # วางรูปบ้านทับ
+        imagebox = OffsetImage(house_img, zoom=0.05)  # ปรับเล็กลง
         ab = AnnotationBbox(imagebox, (x, y), frameon=False)
         ax.add_artist(ab)
 
+        # ชื่อโหนด
         ax.text(x, y - 0.1, node, fontsize=7, ha='center')
 
     # 🔴 path
@@ -95,7 +104,7 @@ def draw_graph(path=None, packet_positions=None):
     # 🚗 packet
     if packet_positions:
         for (x, y) in packet_positions:
-            imagebox = OffsetImage(car_img, zoom=0.05)
+            imagebox = OffsetImage(car_img, zoom=0.03)  # ปรับเล็กลง
             ab = AnnotationBbox(imagebox, (x, y), frameon=False)
             ax.add_artist(ab)
 
@@ -103,6 +112,7 @@ def draw_graph(path=None, packet_positions=None):
     ax.axis('off')
 
     return fig
+
 
 # =====================
 # ANIMATION
