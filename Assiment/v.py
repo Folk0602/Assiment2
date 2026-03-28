@@ -3,28 +3,16 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import time
 import random
-import os
 
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 import matplotlib.image as mpimg
 
 st.set_page_config(layout="wide")
 
-
-if os.path.exists("Assiment/house.jpg"):
-    house_img = mpimg.imread("Assiment/house.jpg")
-else:
-    st.error("ไม่พบไฟล์ house.jpg")
-
-if os.path.exists("Assiment/car.jpg"):
-    car_img = mpimg.imread("Assiment/car.jpg")
-else:
-    st.error("ไม่พบไฟล์ car.jpg")
-
-    
 # =====================
 # LOAD IMAGE
 # =====================
+# ใช้ไฟล์ PNG ที่พื้นหลังโปร่งใสจะดีที่สุด
 house_img = mpimg.imread("Assiment/house.png")
 car_img = mpimg.imread("Assiment/car.png")
 
@@ -57,25 +45,17 @@ G = st.session_state.G
 pos = st.session_state.pos
 
 # =====================
-# UPDATE LAYOUT (ไม่ขยับ)
+# UPDATE LAYOUT
 # =====================
 def update_layout(new_node=None):
     global pos
-
     if new_node:
-        pos[new_node] = (
-            random.uniform(-1, 1),
-            random.uniform(-1, 1)
-        )
-
+        pos[new_node] = (random.uniform(-1, 1), random.uniform(-1, 1))
     pos = nx.spring_layout(G, pos=pos, fixed=pos.keys())
     st.session_state.pos = pos
 
 # =====================
-# DRAW GRAPH (ใช้รูป)
-# =====================
-# =====================
-# DRAW GRAPH (ใช้รูป + สีโหนด)
+# DRAW GRAPH
 # =====================
 def draw_graph(path=None, packet_positions=None):
     fig, ax = plt.subplots()
@@ -89,50 +69,43 @@ def draw_graph(path=None, packet_positions=None):
         ax=ax
     )
 
-    # 🏠 node + สีพื้นหลัง
+    # 🏠 node + ชื่อ
     for node, (x, y) in pos.items():
-        # วาดวงกลมสีพื้นหลัง
-        #circle = plt.Circle((x, y), 0.05, color="lightblue", zorder=0)
-        #ax.add_artist(circle)
+        # วงกลมสีพื้นหลัง
+        circle = plt.Circle((x, y), 0.05, color="lightblue", zorder=0)
+        ax.add_artist(circle)
 
-        # วางรูปบ้านทับ
-        imagebox = OffsetImage(house_img, zoom=0.05)  # ปรับเล็กลง
+        # รูปบ้าน
+        imagebox = OffsetImage(house_img, zoom=0.05)
         ab = AnnotationBbox(imagebox, (x, y), frameon=False)
         ax.add_artist(ab)
 
-        # ชื่อโหนด
-        ax.text(x, y - 0.1, node, fontsize=7, ha='center')
+        # ชื่อโหนด (เลื่อนขึ้นเล็กน้อย + ใส่พื้นหลังโปร่งใส)
+        ax.text(x, y + 0.12, node, fontsize=7, ha='center',
+                bbox=dict(facecolor='white', alpha=0.6, edgecolor='none', pad=1))
 
     # 🔴 path
     if path:
         edges = list(zip(path, path[1:]))
-        nx.draw_networkx_edges(
-            G, pos,
-            edgelist=edges,
-            edge_color='red',
-            width=2,
-            ax=ax
-        )
+        nx.draw_networkx_edges(G, pos, edgelist=edges,
+                               edge_color='red', width=2, ax=ax)
 
     # 🚗 packet
     if packet_positions:
         for (x, y) in packet_positions:
-            imagebox = OffsetImage(car_img, zoom=0.03)  # ปรับเล็กลง
+            imagebox = OffsetImage(car_img, zoom=0.03)
             ab = AnnotationBbox(imagebox, (x, y), frameon=False)
             ax.add_artist(ab)
 
     ax.set_title("Smart Traffic Simulation", fontsize=10)
     ax.axis('off')
-
     return fig
-
 
 # =====================
 # ANIMATION
 # =====================
 def animate(path, num_packets):
     placeholder = st.empty()
-
     original_weights = {}
     traffic = {}
 
@@ -158,15 +131,12 @@ def animate(path, num_packets):
         packet_positions = []
 
         for p in packets:
-
             if step < p["delay"]:
                 continue
-
             if p["edge_index"] >= len(path)-1:
                 continue
 
             running = True
-
             u = path[p["edge_index"]]
             v = path[p["edge_index"]+1]
 
@@ -178,10 +148,8 @@ def animate(path, num_packets):
             x2, y2 = pos[v]
 
             p["t"] += p["speed"]
-
             x = x1 + (x2 - x1) * p["t"]
             y = y1 + (y2 - y1) * p["t"]
-
             packet_positions.append((x, y))
 
             if p["t"] >= 1:
@@ -192,7 +160,6 @@ def animate(path, num_packets):
 
         fig = draw_graph(path, packet_positions)
         placeholder.pyplot(fig)
-
         time.sleep(0.01)
         step += 1
 
@@ -206,7 +173,6 @@ col1, col2 = st.columns(2)
 # CRUD
 with col1:
     st.subheader("Manage Graph")
-
     node = st.text_input("Add Node")
     if st.button("Add Node"):
         if node:
@@ -227,7 +193,6 @@ with col1:
     u = st.text_input("From")
     v = st.text_input("To")
     w = st.number_input("Weight", value=1)
-
     if st.button("Add Edge"):
         if u and v:
             G.add_edge(u, v, weight=w)
@@ -237,7 +202,6 @@ with col1:
 # Simulation
 with col2:
     st.subheader("Simulation")
-
     start = st.text_input("Start Node")
     end = st.text_input("End Node")
     packets = st.number_input("Packets", min_value=1, value=5)
@@ -247,8 +211,10 @@ with col2:
             path = nx.shortest_path(G, start, end, weight='weight')
             st.write("Path:", " -> ".join(path))
             animate(path, packets)
-        except:
+        except nx.NetworkXNoPath:
             st.error("Path not found")
+        except Exception as e:
+            st.error(f"Error: {e}")
 
 # Show graph
 st.subheader("Graph View")
